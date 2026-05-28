@@ -1,7 +1,7 @@
 [AGENTS.md](https://github.com/user-attachments/files/28329962/AGENTS.md)
 # AGENTS.md
 
-本文件为 Codex（Codex.ai/code）在此仓库中工作时提供指导。
+本文件为 Codex（Codex.ai/code）在此仓库中工作时提供指导。 目前只支持1x挂机自动刷(可最小化网页)有效倍速功能还在开发,但倍速功能仍可使用只是无法被学习通任务点监测!!!!
 
 ## 项目概述
 
