@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "学习通视频倍速",
+  "version": "2.6.0",
+  "description": "倍速播放学习通视频并记录任务点",
+  "permissions": ["storage", "scripting", "activeTab"],
+  "host_permissions": ["*://*.chaoxing.com/*", "http://localhost:*/*", "http://127.0.0.1:*/*"],
+  "action": {
+    "default_popup": "popup/popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.chaoxing.com/*", "http://localhost:*/*", "http://127.0.0.1:*/*"],
+      "js": ["main-world.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    },
+    {
+      "matches": ["*://*.chaoxing.com/*", "http://localhost:*/*", "http://127.0.0.1:*/*"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ]
+}

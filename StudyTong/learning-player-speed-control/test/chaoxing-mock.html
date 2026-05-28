@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>学习通视频 - 模拟测试页面 v2</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 900px; margin: 30px auto; padding: 20px; background: #f5f5f5; }
+  h1 { margin-bottom: 4px; }
+  .subtitle { color: #888; font-size: 13px; margin-bottom: 20px; }
+  .task-badge { display: inline-block; background: #e74c3c; color: #fff; padding: 4px 10px; border-radius: 4px; font-size: 12px; }
+  .video-container { background: #000; border-radius: 8px; overflow: hidden; margin: 16px 0; }
+  video { width: 100%; display: block; }
+
+  .card { background: #fff; border-radius: 8px; padding: 16px; margin: 12px 0; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .card h3 { margin: 0 0 12px; font-size: 15px; }
+
+  .status { display: flex; gap: 12px; flex-wrap: wrap; }
+  .stat { background: #f8f9fa; border: 1px solid #e0e0e0; padding: 10px 14px; border-radius: 6px; min-width: 130px; }
+  .stat label { font-size: 11px; color: #888; display: block; margin-bottom: 2px; }
+  .stat value { font-size: 20px; font-weight: bold; color: #222; }
+
+  .btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  button {
+    padding: 7px 14px; border: 1px solid #ccc; border-radius: 5px;
+    cursor: pointer; background: #fff; font-size: 13px; transition: background .15s;
+  }
+  button:hover { background: #f0f0f0; }
+  button.danger { border-color: #e74c3c; color: #e74c3c; }
+  button.danger:hover { background: #fdecea; }
+  button.primary { border-color: #007bff; color: #007bff; }
+  button.primary:hover { background: #e8f0fe; }
+  button.success { border-color: #28a745; color: #28a745; }
+  button.success:hover { background: #eafaf1; }
+
+  /* 结果徽章 */
+  .result { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-left: 6px; }
+  .result.pass { background: #eafaf1; color: #28a745; }
+  .result.fail { background: #fdecea; color: #e74c3c; }
+  .result.warn { background: #fff8e1; color: #f59e0b; }
+
+  .log { background: #1e1e1e; color: #0f0; padding: 14px; border-radius: 8px; font-family: monospace; font-size: 12px; max-height: 260px; overflow-y: auto; }
+  .log .warn { color: #ffd700; }
+  .log .err  { color: #ff5555; }
+  .log .ok   { color: #50fa7b; }
+  .log .info { color: #8be9fd; }
+
+  .section-title { font-size: 13px; font-weight: bold; color: #555; margin: 16px 0 6px; text-transform: uppercase; letter-spacing: .5px; }
+
+  /* 进度条 */
+  .progress-wrap { background: #e0e0e0; border-radius: 4px; height: 8px; margin: 8px 0; }
+  .progress-bar  { background: #007bff; height: 8px; border-radius: 4px; transition: width .5s; }
+
+  /* allowEnd 倒计时 */
+  #allowEndBar { background: #28a745; }
+
+  input[type=range] { width: 100%; }
+  .speed-ctrl { display: flex; align-items: center; gap: 12px; }
+  .speed-ctrl span { min-width: 36px; font-weight: bold; font-size: 15px; }
+</style>
+</head>
+<body>
+
+<h1>📺 学习通视频课程 <small style="font-size:14px;color:#888;">· 模拟测试页面 v2</small></h1>
+<p class="subtitle">用于测试 Chrome 扩展 <b>learning-player-speed-control</b> 在各场景下的行为</p>
+
+<span class="task-badge" id="taskBadge">🔴 任务点</span>
+<span style="margin-left:10px;color:#666;">第1章 · 测试视频</span>
+
+<div class="video-container">
+  <video id="testVideo" controls src="https://www.w3schools.com/html/mov_bbb.mp4"></video>
+</div>
+
+<!-- ① 实时状态 -->
+<div class="card">
+  <h3>📊 实时状态监控</h3>
+  <div class="status">
+    <div class="stat">
+      <label>playbackRate（平台读到）</label>
+      <value id="actualRate">1.00</value>
+    </div>
+    <div class="stat">
+      <label>currentTime（平台读到）</label>
+      <value id="currentTimeDisplay">0.0</value>
+    </div>
+    <div class="stat">
+      <label>paused（平台读到）</label>
+      <value id="pausedState">true</value>
+    </div>
+    <div class="stat">
+      <label>ended（平台读到）</label>
+      <value id="endedState">false</value>
+    </div>
+    <div class="stat">
+      <label>扩展是否注入</label>
+      <value id="injectedState">检测中…</value>
+    </div>
+  </div>
+  <div style="margin-top:10px;">
+    <label style="font-size:12px;color:#888;">播放进度</label>
+    <div class="progress-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+  </div>
+  <div style="margin-top:6px;">
+    <label style="font-size:12px;color:#888;">allowEnd 倒计时（需满足真实观看时长才允许 ended）</label>
+    <div class="progress-wrap"><div class="progress-bar" id="allowEndBar" style="width:0%"></div></div>
+    <span id="allowEndText" style="font-size:12px;color:#888;">等待播放…</span>
+  </div>
+</div>
+
+<!-- ② 原有平台行为模拟 -->
+<div class="card">
+  <h3>🎮 原有：模拟平台脚本行为</h3>
+  <div class="btn-row">
+    <button onclick="platformCheckRate()">平台读 playbackRate</button>
+    <button class="danger" onclick="platformSetRate(1)">平台强制重置 1x</button>
+    <button class="danger" onclick="platformSetRate(0.5)">平台尝试 0.5x</button>
+    <button onclick="simulateTaskPointCheck()">完整任务点检测</button>
+  </div>
+</div>
+
+<!-- ③ 新增：缺失场景测试 -->
+<div class="card">
+  <h3>🆕 新增：动态 video 注入测试 <span class="result" id="dynResult">未测试</span></h3>
+  <p style="font-size:13px;color:#555;margin:0 0 10px;">验证 MutationObserver 能否 hook 动态插入的 &lt;video&gt; 元素</p>
+  <div class="btn-row">
+    <button class="primary" onclick="testDynamicVideo()">① 动态插入 video</button>
+    <button onclick="checkDynamicVideoRate()">② 读取其 playbackRate</button>
+    <button class="danger" onclick="removeDynamicVideo()">③ 移除动态 video</button>
+  </div>
+  <div id="dynVideoWrap" style="margin-top:10px;"></div>
+</div>
+
+<div class="card">
+  <h3>🆕 新增：ended 阻止与回跳测试 <span class="result" id="endedResult">未测试</span></h3>
+  <p style="font-size:13px;color:#555;margin:0 0 10px;">
+    视频播放完毕时，扩展应阻止 ended 事件并跳回 85%（除非 allowEnd 已满足）
+  </p>
+  <div class="btn-row">
+    <button class="primary" onclick="simulateEnded()">模拟视频播放到结尾</button>
+    <button onclick="checkEndedGetter()">读取 ended getter 当前值</button>
+  </div>
+</div>
+
+<div class="card">
+  <h3>🆕 新增：currentTime setter 拦截测试 <span class="result" id="ctResult">未测试</span></h3>
+  <p style="font-size:13px;color:#555;margin:0 0 10px;">
+    平台尝试将 currentTime 设置为 ≥95% 时，setter 应将其重定向到 30%
+  </p>
+  <div class="btn-row">
+    <button class="danger" onclick="testCurrentTimeSetter(0.98)">平台尝试跳到 98%</button>
+    <button class="danger" onclick="testCurrentTimeSetter(0.95)">平台尝试跳到 95%</button>
+    <button class="primary" onclick="testCurrentTimeSetter(0.5)">正常跳到 50%（应通过）</button>
+  </div>
+</div>
+
+<div class="card">
+  <h3>🆕 新增：compat / enabled 模式切换测试 <span class="result" id="modeResult">未测试</span></h3>
+  <p style="font-size:13px;color:#555;margin:0 0 10px;">
+    通过 postMessage 切换配置，验证 getter 行为是否随模式正确变化
+  </p>
+  <div class="btn-row">
+    <button class="primary" onclick="sendConfig({speed:2, enabled:true, compatMode:true})">2x + compat ON</button>
+    <button onclick="sendConfig({speed:3, enabled:true, compatMode:false})">3x + 极速模式</button>
+    <button class="danger" onclick="sendConfig({speed:2, enabled:false, compatMode:true})">关闭倍速（enabled=false）</button>
+    <button class="success" onclick="sendConfig({speed:2, enabled:true, compatMode:true})">恢复默认</button>
+  </div>
+  <div class="btn-row" style="margin-top:8px;">
+    <button onclick="runModeVerify()">▶ 切换后自动验证所有 getter</button>
+  </div>
+</div>
+
+<div class="card">
+  <h3>🆕 新增：allowEnd 条件测试 <span class="result" id="allowEndResult">未测试</span></h3>
+  <p style="font-size:13px;color:#555;margin:0 0 10px;">
+    需要播放足够真实时长（≥ needRealSeconds）后，ended 才能返回 true
+  </p>
+  <div class="btn-row">
+    <button onclick="checkAllowEndState()">检查 __st.allowEnd 当前值</button>
+    <button class="primary" onclick="forceAllowEnd()">强制注入 allowEnd=true（绕过等待）</button>
+    <button onclick="testEndedAfterAllow()">允许后再读 ended getter</button>
+  </div>
+</div>
+
+<div class="card">
+  <h3>🆕 新增：多 video 元素 + postMessage 配置注入</h3>
+  <div class="btn-row">
+    <button class="primary" onclick="addSecondVideo()">添加第二个 video</button>
+    <button onclick="checkAllVideosRate()">检查所有 video 的 playbackRate</button>
+    <button onclick="testPostMessage()">postMessage 改变 speed=4x</button>
+  </div>
+  <div id="secondVideoWrap"></div>
+</div>
+
+<!-- ④ 日志 -->
+<div class="card">
+  <h3>📋 控制台日志 <button style="float:right;font-size:11px;padding:2px 8px;" onclick="clearLog()">清空</button></h3>
+  <div class="log" id="logContainer"></div>
+</div>
+
+<!-- 保存原始 setter/getter，供测试使用（必须在 main-world.js 之前） -->
+<script>
+var __TEST_origCurrentTime = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'currentTime');
+var __TEST_origPaused = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'paused');
+var __TEST_origEnded = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'ended');
+var __TEST_origPlay = HTMLMediaElement.prototype.play;
+var __TEST_origPause = HTMLMediaElement.prototype.pause;
+</script>
+<!-- 自动加载 main-world.js 模拟扩展注入（仅测试环境） -->
+<script src="../main-world.js"></script>
+<script>
+// ==================== 日志 ====================
+var $log = document.getElementById('logContainer');
+function log(msg, type) {
+  var div = document.createElement('div');
+  div.className = type || '';
+  div.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+  $log.appendChild(div);
+  $log.scrollTop = $log.scrollHeight;
+}
+function clearLog() { $log.innerHTML = ''; }
+function setResult(id, pass, label) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = label || (pass ? '✅ 通过' : '❌ 失败');
+  el.className = 'result ' + (pass ? 'pass' : 'fail');
+}
+
+log('平台追踪脚本已加载', 'warn');
+
+// ==================== 实时状态轮询 ====================
+var lastTime = 0;
+setInterval(function() {
+  var v = document.getElementById('testVideo');
+  if (!v) return;
+
+  var rate = v.playbackRate;
+  var ct = v.currentTime;
+  var dur = v.duration || 0;
+
+  document.getElementById('actualRate').textContent = rate.toFixed(2);
+  document.getElementById('currentTimeDisplay').textContent = ct.toFixed(1) + 's';
+  document.getElementById('pausedState').textContent = String(v.paused);
+  document.getElementById('endedState').textContent = String(v.ended);
+
+  // 进度条
+  if (dur > 0) {
+    document.getElementById('progressBar').style.width = Math.min(100, ct / dur * 100).toFixed(1) + '%';
+  }
+
+  // allowEnd 进度（通过 __st 读取）
+  var st = v.__st;
+  if (st) {
+    var needed = st.needReal || 30;
+    var now = Date.now();
+    var total = st.accumulated + (st.startWall > 0 ? (now - st.startWall) : 0);
+    var pct = Math.min(100, total / 1000 / needed * 100);
+    document.getElementById('allowEndBar').style.width = pct.toFixed(1) + '%';
+    document.getElementById('allowEndText').textContent =
+      'allowEnd=' + st.allowEnd + '，已观看 ' + (total/1000).toFixed(1) + 's / 需要 ' + needed.toFixed(1) + 's';
+    if (st.allowEnd) {
+      document.getElementById('allowEndResult').textContent = '✅ 条件满足';
+      document.getElementById('allowEndResult').className = 'result pass';
+    }
+  }
+
+  // 检测时间跳跃（模拟平台）
+  if (lastTime > 0 && ct - lastTime > 1.5 * rate + 0.3) {
+    log('⚠️ 平台检测到时间跳跃: +' + (ct - lastTime).toFixed(2) + 's（疑似快进）', 'err');
+  }
+  if (Math.abs(rate - 1) > 0.1) {
+    log('⚠️ 平台检测到异常倍速: ' + rate.toFixed(2) + 'x', 'err');
+  }
+  lastTime = ct;
+}, 1000);
+
+// 注入检测：轮询直到检测到（最多 10 秒），兼容异步 script 加载
+var injectCheckAttempts = 0;
+var injectCheckTimer = setInterval(function() {
+  injectCheckAttempts++;
+  var patched = typeof HTMLMediaElement.prototype.__studyTongSpeedPatched !== 'undefined';
+  var lock = typeof window.__studyTongSpeedLock !== 'undefined';
+  var el = document.getElementById('injectedState');
+  if (patched && lock) {
+    el.textContent = '✅ 已注入';
+    el.style.color = '#28a745';
+    log('✅ main-world.js 已注入，prototype 已修补，speed=' + window.__studyTongSpeedLock.speed, 'ok');
+    clearInterval(injectCheckTimer);
+  } else if (injectCheckAttempts >= 20) {
+    el.textContent = '❌ 未注入';
+    el.style.color = '#e74c3c';
+    log('❌ main-world.js 未注入！prototype 未修补（超时）', 'err');
+    clearInterval(injectCheckTimer);
+  }
+}, 500);
+
+// ==================== 原有测试函数 ====================
+function platformCheckRate() {
+  var v = document.getElementById('testVideo');
+  var rate = v.playbackRate;
+  log('平台读取 playbackRate = ' + rate.toFixed(2) + 'x（期望 compat 模式下为 1.00）');
+}
+
+function platformSetRate(rate) {
+  var v = document.getElementById('testVideo');
+  log('平台尝试设置 playbackRate = ' + rate + 'x', 'warn');
+  v.playbackRate = rate;
+  setTimeout(function() {
+    log('设置后实际读到 playbackRate = ' + v.playbackRate.toFixed(2) + 'x（compat 模式下应仍为 1.00）');
+  }, 200);
+}
+
+function simulateTaskPointCheck() {
+  var v = document.getElementById('testVideo');
+  log('--- 任务点检测开始 ---', 'warn');
+  log('playbackRate: ' + v.playbackRate.toFixed(2));
+  log('currentTime: ' + v.currentTime.toFixed(1));
+  log('duration: ' + (v.duration || 0).toFixed(1));
+  log('paused: ' + v.paused);
+  log('ended: ' + v.ended);
+  var progress = v.duration > 0 ? (v.currentTime / v.duration * 100).toFixed(1) : 0;
+  log('播放进度: ' + progress + '%');
+  if (v.paused) {
+    log('❌ 视频已暂停，任务点未完成', 'err');
+  } else if (v.playbackRate > 1.5) {
+    log('⚠️ 倍速过快（' + v.playbackRate.toFixed(1) + 'x），可能不被计为有效观看', 'err');
+  } else if (progress < 90) {
+    log('⏳ 播放进度不足 90%，任务点未完成');
+  } else {
+    log('✅ 任务点检测通过！进度已记录', 'ok');
+  }
+  log('--- 任务点检测结束 ---', 'warn');
+}
+
+// ==================== 新增：动态 video 注入 ====================
+var dynVideo = null;
+function testDynamicVideo() {
+  var wrap = document.getElementById('dynVideoWrap');
+  if (dynVideo) { log('动态 video 已存在，请先移除', 'warn'); return; }
+  dynVideo = document.createElement('video');
+  dynVideo.src = 'https://www.w3schools.com/html/mov_bbb.mp4';
+  dynVideo.controls = true;
+  dynVideo.style.cssText = 'width:100%;max-height:120px;background:#000;border-radius:6px;margin-top:8px;';
+  wrap.appendChild(dynVideo);
+  log('动态 video 已插入 DOM，等待 MutationObserver hook…', 'info');
+  setTimeout(function() {
+    var hooked = dynVideo.__studyTongSpeedHooked;
+    var pass = !!hooked;
+    setResult('dynResult', pass, pass ? '✅ MutationObserver 生效' : '❌ 未被 hook');
+    log(pass ? '✅ 动态 video 已被 MutationObserver hook' : '❌ 动态 video 未被 hook！', pass ? 'ok' : 'err');
+  }, 500);
+}
+
+function checkDynamicVideoRate() {
+  if (!dynVideo) { log('请先插入动态 video', 'warn'); return; }
+  var rate = dynVideo.playbackRate;
+  log('动态 video playbackRate = ' + rate.toFixed(2) + 'x（应与主视频一致）', Math.abs(rate - 1) < 0.1 ? 'ok' : 'err');
+}
+
+function removeDynamicVideo() {
+  if (!dynVideo) { log('没有动态 video', 'warn'); return; }
+  dynVideo.parentNode && dynVideo.parentNode.removeChild(dynVideo);
+  dynVideo = null;
+  document.getElementById('dynVideoWrap').innerHTML = '';
+  log('动态 video 已移除');
+}
+
+// ==================== 新增：ended 阻止与回跳 ====================
+function simulateEnded() {
+  var v = document.getElementById('testVideo');
+  if (!v.duration || !isFinite(v.duration)) {
+    log('视频尚未加载（duration 未知），请先播放一下', 'warn'); return;
+  }
+  // 确保视频在播放状态，否则设置 currentTime 不会触发 ended
+  var realPaused = window.__TEST_origPaused ? window.__TEST_origPaused.get.call(v) : true;
+  if (realPaused) {
+    window.__TEST_origPlay.call(v);
+    log('先启动视频播放…', 'info');
+  }
+  log('模拟：强制跳到视频结尾…', 'info');
+  // 使用 page-load 前保存的原始 setter，绕过扩展拦截来真正触发 ended
+  var origSet = window.__TEST_origCurrentTime && window.__TEST_origCurrentTime.set;
+  if (origSet) {
+    origSet.call(v, v.duration - 0.05);
+    log('已通过原始 setter 跳至结尾，监听 ended 事件…', 'info');
+  } else {
+    v.currentTime = v.duration - 0.05;
+  }
+  var handler = function(e) {
+    var st = v.__st;
+    var allowEnd = st && st.allowEnd;
+    if (!allowEnd) {
+      // 检查是否被阻止
+      setTimeout(function() {
+        var ct = v.currentTime;
+        var pass = ct < v.duration * 0.9; // 被跳回到 85%
+        setResult('endedResult', pass, pass ? '✅ ended 被阻止并回跳' : '❌ 未正确回跳');
+        log(pass ? '✅ ended 事件被拦截，已回跳至 ' + ct.toFixed(1) + 's' : '❌ 未检测到回跳，currentTime=' + ct.toFixed(1), pass ? 'ok' : 'err');
+      }, 300);
+    } else {
+      log('allowEnd=true，ended 事件被允许通过', 'ok');
+      setResult('endedResult', true, '✅ allowEnd 后正常结束');
+    }
+    v.removeEventListener('ended', handler, true);
+  };
+  v.addEventListener('ended', handler, true);
+}
+
+function checkEndedGetter() {
+  var v = document.getElementById('testVideo');
+  var ended = v.ended;
+  log('当前 ended getter = ' + ended + '（allowEnd=' + (v.__st && v.__st.allowEnd) + '）');
+}
+
+// ==================== 新增：currentTime setter 拦截 ====================
+function testCurrentTimeSetter(ratio) {
+  var v = document.getElementById('testVideo');
+  if (!v.duration || !isFinite(v.duration)) {
+    log('duration 未知，请先播放一下', 'warn'); return;
+  }
+  var target = v.duration * ratio;
+  var label = (ratio * 100).toFixed(0) + '%';
+  log('平台尝试 currentTime = ' + target.toFixed(2) + 's（' + label + '）…', 'warn');
+  v.currentTime = target;
+  setTimeout(function() {
+    var actual = v.currentTime;
+    var shouldBlock = ratio >= 0.95;
+    var wasBlocked = shouldBlock && actual < v.duration * 0.5;
+    if (shouldBlock) {
+      setResult('ctResult', wasBlocked, wasBlocked ? '✅ setter 拦截生效' : '❌ 未拦截！');
+      log(wasBlocked
+        ? '✅ setter 拦截：' + label + ' → 实际跳到 ' + actual.toFixed(2) + 's（约 ' + (actual/v.duration*100).toFixed(0) + '%）'
+        : '❌ setter 未拦截！currentTime=' + actual.toFixed(2) + 's', wasBlocked ? 'ok' : 'err');
+    } else {
+      log('正常跳转到 ' + label + '，currentTime=' + actual.toFixed(2) + 's（预期无拦截）', 'ok');
+      setResult('ctResult', true, '✅ 正常跳转');
+    }
+  }, 200);
+}
+
+// ==================== 新增：模式切换 ====================
+function sendConfig(cfg) {
+  var msg = Object.assign({ type: 'STUDY_TONG_SPEED_CONFIG' }, cfg);
+  window.postMessage(msg, '*');
+  log('postMessage → speed=' + cfg.speed + ' enabled=' + cfg.enabled + ' compatMode=' + cfg.compatMode, 'info');
+}
+
+function runModeVerify() {
+  var v = document.getElementById('testVideo');
+  setTimeout(function() {
+    var lock = window.__studyTongSpeedLock;
+    if (!lock) { log('❌ __studyTongSpeedLock 不存在', 'err'); return; }
+    var rate = v.playbackRate;
+    var paused = v.paused;
+    log('--- 模式验证 ---', 'warn');
+    log('state: speed=' + lock.speed + ' enabled=' + lock.enabled + ' compatMode=' + lock.compatMode);
+    log('playbackRate getter = ' + rate.toFixed(2) + '（compat 模式下应为 1.00）');
+    log('paused getter = ' + paused + '（compat 模式下应为 false）');
+    var compatOk = !lock.compatMode || (lock.enabled && Math.abs(rate - 1) < 0.1);
+    var disabledOk = lock.enabled || Math.abs(rate - 1) < 0.1; // disabled 时也应返回 1
+    var pass = compatOk && disabledOk;
+    setResult('modeResult', pass, pass ? '✅ 模式切换正常' : '❌ getter 异常');
+    log(pass ? '✅ 模式切换验证通过' : '❌ getter 行为与模式不符', pass ? 'ok' : 'err');
+    log('--- 验证结束 ---', 'warn');
+  }, 300);
+}
+
+// ==================== 新增：allowEnd 条件测试 ====================
+function checkAllowEndState() {
+  var v = document.getElementById('testVideo');
+  var st = v.__st;
+  if (!st) { log('❌ __st 不存在，video 可能未被 hook', 'err'); return; }
+  log('allowEnd=' + st.allowEnd + '，accumulated=' + (st.accumulated/1000).toFixed(1) + 's，needReal=' + (st.needReal||30).toFixed(1) + 's', 'info');
+}
+
+function forceAllowEnd() {
+  var v = document.getElementById('testVideo');
+  var st = v.__st;
+  if (!st) { log('❌ __st 不存在', 'err'); return; }
+  st.allowEnd = true;
+  log('✅ 已强制设置 allowEnd=true', 'ok');
+  setResult('allowEndResult', true, '✅ 已强制允许');
+}
+
+function testEndedAfterAllow() {
+  var v = document.getElementById('testVideo');
+  var st = v.__st;
+  if (!st || !st.allowEnd) { log('请先满足 allowEnd 条件（或点击强制注入）', 'warn'); return; }
+  var ended = v.ended;
+  log('allowEnd=true 后，ended getter = ' + ended + '（应反映真实值）', 'ok');
+}
+
+// ==================== 多 video + postMessage ====================
+var secondVideo = null;
+function addSecondVideo() {
+  var wrap = document.getElementById('secondVideoWrap');
+  if (secondVideo) { log('第二个 video 已存在', 'warn'); return; }
+  secondVideo = document.createElement('video');
+  secondVideo.src = 'https://www.w3schools.com/html/mov_bbb.mp4';
+  secondVideo.controls = true;
+  secondVideo.style.cssText = 'width:100%;max-height:100px;background:#000;border-radius:6px;margin-top:8px;';
+  wrap.appendChild(secondVideo);
+  log('第二个 video 已插入', 'info');
+}
+
+function checkAllVideosRate() {
+  var videos = document.querySelectorAll('video');
+  log('页面共 ' + videos.length + ' 个 video 元素：', 'info');
+  videos.forEach(function(v, i) {
+    log('  video[' + i + '] playbackRate=' + v.playbackRate.toFixed(2) + ' hooked=' + !!v.__studyTongSpeedHooked);
+  });
+}
+
+function testPostMessage() {
+  window.postMessage({ type: 'STUDY_TONG_SPEED_CONFIG', speed: 4, enabled: true, compatMode: true }, '*');
+  log('postMessage → speed=4x，等待生效…', 'info');
+  setTimeout(function() {
+    var lock = window.__studyTongSpeedLock;
+    if (lock) log('state.speed 现在 = ' + lock.speed, lock.speed === 4 ? 'ok' : 'err');
+  }, 300);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学习通倍速控制</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            width: 280px;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            color: #fff;
+        }
+
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h1 { font-size: 18px; font-weight: 600; margin-bottom: 5px; }
+        .header p { font-size: 12px; opacity: 0.9; }
+
+        .status-bar {
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-item { display: flex; align-items: center; gap: 6px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; }
+        .status-dot.inactive { background: #f87171; }
+
+        .speed-display { text-align: center; margin-bottom: 20px; }
+        .current-speed { font-size: 48px; font-weight: 700; line-height: 1; margin-bottom: 5px; }
+        .speed-label { font-size: 14px; opacity: 0.9; }
+
+        .speed-slider { width: 100%; margin-bottom: 20px; }
+        input[type="range"] {
+            width: 100%; height: 6px; border-radius: 3px;
+            background: rgba(255,255,255,0.3); outline: none; -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 20px; height: 20px;
+            border-radius: 50%; background: #fff; cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        .preset-buttons {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 8px; margin-bottom: 15px;
+        }
+
+        .preset-btn {
+            padding: 10px 5px; border: none; border-radius: 6px;
+            background: rgba(255,255,255,0.2); color: #fff;
+            font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .preset-btn:hover { background: rgba(255,255,255,0.35); transform: translateY(-1px); }
+        .preset-btn.active { background: #fff; color: #667eea; }
+
+        .control-buttons { display: flex; gap: 10px; margin-bottom: 10px; }
+
+        .control-btn {
+            flex: 1; padding: 12px; border: none; border-radius: 8px;
+            font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .control-btn.primary { background: #fff; color: #667eea; }
+        .control-btn.secondary { background: rgba(255,255,255,0.2); color: #fff; }
+        .control-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+
+        .mode-tip {
+            background: rgba(255,255,255,0.12);
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 11px;
+            opacity: 0.9;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        .mode-tip b { font-weight: 700; }
+
+        .shortcuts {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px; padding: 12px; margin-top: 5px;
+        }
+        .shortcuts h3 { font-size: 12px; font-weight: 600; margin-bottom: 8px; opacity: 0.9; }
+        .shortcut-item { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; opacity: 0.85; }
+        .shortcut-key { background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 3px; font-family: monospace; }
+
+        .section-divider { border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 10px 0 6px; }
+    .section-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8; margin-bottom: 6px; }
+    .footer { text-align: center; margin-top: 15px; font-size: 10px; opacity: 0.7; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📺 学习通倍速控制</h1>
+        <p>视频倍速播放并记录学习进度</p>
+    </div>
+
+    <div class="status-bar">
+        <div class="status-item">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">未检测到视频</span>
+        </div>
+        <div class="status-item">
+            <span id="videoStatus">视频: 等待中</span>
+        </div>
+    </div>
+
+    <div class="speed-display">
+        <div class="current-speed" id="currentSpeedDisplay">2.0</div>
+        <div class="speed-label">倍速</div>
+    </div>
+
+    <div class="speed-slider">
+        <input type="range" id="speedSlider" min="0.5" max="16" step="0.5" value="2">
+    </div>
+
+    <div class="preset-buttons">
+        <button class="preset-btn" data-speed="1">1x</button>
+        <button class="preset-btn" data-speed="1.5">1.5x</button>
+        <button class="preset-btn active" data-speed="2">2x</button>
+        <button class="preset-btn" data-speed="3">3x</button>
+        <button class="preset-btn" data-speed="4">4x</button>
+        <button class="preset-btn" data-speed="6">6x</button>
+        <button class="preset-btn" data-speed="8">8x</button>
+        <button class="preset-btn" data-speed="16">16x</button>
+    </div>
+
+    <div class="control-buttons">
+        <button class="control-btn primary" id="enableBtn">启用</button>
+        <button class="control-btn secondary" id="refreshBtn">刷新状态</button>
+    </div>
+
+    <div class="control-buttons">
+        <button class="control-btn primary" id="compatBtn">计进度模式</button>
+    </div>
+
+    <div class="mode-tip" id="modeTip">
+        <b>计进度模式</b>：以稳定速率播放并等待平台正常记录任务点
+    </div>
+
+    <div class="control-buttons">
+        <button class="control-btn secondary" id="autoNextBtn">自动下一条</button>
+    </div>
+
+    <hr class="section-divider">
+    <div class="section-label">新增功能</div>
+
+    <div class="control-buttons">
+        <button class="control-btn primary" id="preventFocusBtn">防失焦暂停</button>
+    </div>
+
+    <div class="control-buttons">
+        <button class="control-btn primary" id="autoMuteBtn">自动静音</button>
+    </div>
+
+    <div class="control-buttons">
+        <button class="control-btn secondary" id="autoReadDocBtn">自动阅读文档</button>
+    </div>
+
+    <div class="control-buttons">
+        <button class="control-btn secondary" id="autoQuizBtn">自动答题</button>
+    </div>
+
+    <hr class="section-divider">
+    <div class="section-label">挂机拿任务点</div>
+
+    <div class="control-buttons">
+        <button class="control-btn primary" id="idleModeBtn" style="font-size:15px;padding:14px;">🍅 挂机拿任务点</button>
+    </div>
+
+    <div id="idleSpeedRow" style="display:flex;gap:6px;margin-bottom:10px;">
+        <button class="preset-btn" data-idle-speed="1" style="flex:1;font-size:11px;">1.0x 稳</button>
+        <button class="preset-btn active" data-idle-speed="1.25" style="flex:1;font-size:11px;">1.25x</button>
+        <button class="preset-btn" data-idle-speed="1.5" style="flex:1;font-size:11px;">1.5x</button>
+    </div>
+
+    <div class="mode-tip" id="idleModeTip" style="display:none;">
+        <b>挂机中</b>：视频正以 <span id="idleModeTipSpeed">1.25</span>x 真实播放，切到其他标签页即可。
+    </div>
+
+    <div class="shortcuts">
+        <h3>⌨️ 键盘快捷键</h3>
+        <div class="shortcut-item"><span>加速</span><span class="shortcut-key">↑</span></div>
+        <div class="shortcut-item"><span>减速</span><span class="shortcut-key">↓</span></div>
+        <div class="shortcut-item"><span>开关</span><span class="shortcut-key">S</span></div>
+    </div>
+
+    <div class="footer">在学习通视频页面使用效果最佳</div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
